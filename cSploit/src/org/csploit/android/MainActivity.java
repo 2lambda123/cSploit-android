@@ -18,6 +18,10 @@
  */
 package org.csploit.android;
 
+import static org.csploit.android.services.UpdateChecker.UPDATE_AVAILABLE;
+import static org.csploit.android.services.UpdateChecker.UPDATE_CHECKING;
+import static org.csploit.android.services.UpdateChecker.UPDATE_NOT_AVAILABLE;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -48,7 +52,12 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import java.io.IOException;
+import java.net.NoRouteToHostException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
 import org.csploit.android.core.Child;
 import org.csploit.android.core.Client;
 import org.csploit.android.core.CrashReporter;
@@ -90,17 +99,6 @@ import org.csploit.android.update.MsfUpdate;
 import org.csploit.android.update.RubyUpdate;
 import org.csploit.android.update.Update;
 
-import java.io.IOException;
-import java.net.NoRouteToHostException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Observable;
-import java.util.Observer;
-
-import static org.csploit.android.services.UpdateChecker.UPDATE_AVAILABLE;
-import static org.csploit.android.services.UpdateChecker.UPDATE_CHECKING;
-import static org.csploit.android.services.UpdateChecker.UPDATE_NOT_AVAILABLE;
-
 @SuppressLint("NewApi")
 public class MainActivity extends AppCompatActivity {
   private String UPDATE_MESSAGE;
@@ -120,21 +118,21 @@ public class MainActivity extends AppCompatActivity {
   private boolean isRootMissing = false;
 
   private void createUpdateStatusText() {
-    if (mUpdateStatus != null) return;
+    if (mUpdateStatus != null)
+      return;
 
-    RelativeLayout layout = (RelativeLayout) findViewById(R.id.layout);
+    RelativeLayout layout = (RelativeLayout)findViewById(R.id.layout);
 
     mUpdateStatus = new TextView(this);
 
-    LayoutParams params = new LayoutParams(LayoutParams.MATCH_PARENT,
-            LayoutParams.MATCH_PARENT);
+    LayoutParams params =
+        new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
 
     mUpdateStatus.setGravity(Gravity.CENTER);
     mUpdateStatus.setLayoutParams(params);
 
     layout.addView(mUpdateStatus);
   }
-
 
   private void createUpdateLayout() {
 
@@ -143,8 +141,7 @@ public class MainActivity extends AppCompatActivity {
 
     createUpdateStatusText();
 
-    mUpdateStatus
-            .setText(UPDATE_MESSAGE.replace("#STATUS#", "..."));
+    mUpdateStatus.setText(UPDATE_MESSAGE.replace("#STATUS#", "..."));
 
     mUpdateReceiver.register(MainActivity.this);
 
@@ -183,8 +180,9 @@ public class MainActivity extends AppCompatActivity {
 
     lv.setOnItemLongClickListener(new OnItemLongClickListener() {
       @Override
-      public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        Target t = (Target) mTargetAdapter.getItem(position);
+      public boolean onItemLongClick(AdapterView<?> parent, View view,
+                                     int position, long id) {
+        Target t = (Target)mTargetAdapter.getItem(position);
         if (t.getType() == Target.Type.NETWORK) {
           if (mActionMode == null)
             targetAliasPrompt(t);
@@ -216,10 +214,10 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode,
                                   Intent intent) {
-    if (requestCode == WIFI_CONNECTION_REQUEST && resultCode == RESULT_OK
-            && intent.hasExtra(WifiScannerActivity.CONNECTED)) {
+    if (requestCode == WIFI_CONNECTION_REQUEST && resultCode == RESULT_OK &&
+        intent.hasExtra(WifiScannerActivity.CONNECTED)) {
       System.reloadNetworkMapping();
-      if(mTargetAdapter != null) {
+      if (mTargetAdapter != null) {
         mTargetAdapter.notifyDataSetChanged();
       }
       try {
@@ -232,7 +230,8 @@ public class MainActivity extends AppCompatActivity {
 
   private void createLayout() {
     boolean wifiAvailable = Network.isWifiConnected(this);
-    boolean connectivityAvailable = wifiAvailable || Network.isConnectivityAvailable(this);
+    boolean connectivityAvailable =
+        wifiAvailable || Network.isConnectivityAvailable(this);
     boolean coreBeating = System.isCoreInitialized();
 
     if (coreBeating && wifiAvailable) {
@@ -248,9 +247,9 @@ public class MainActivity extends AppCompatActivity {
     MainActivity.this.runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        new FatalDialog(getString(R.string.initialization_error),
-                message, message.contains(">"),
-                MainActivity.this).show();
+        new FatalDialog(getString(R.string.initialization_error), message,
+                        message.contains(">"), MainActivity.this)
+            .show();
       }
     });
   }
@@ -312,41 +311,43 @@ public class MainActivity extends AppCompatActivity {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.target_layout);
 
-    lv = (ListView) findViewById(R.id.android_list);
+    lv = (ListView)findViewById(R.id.android_list);
     lv.setOnItemClickListener(new ListView.OnItemClickListener() {
-
       @Override
-      public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+      public void onItemClick(AdapterView<?> parent, View view, int position,
+                              long id) {
 
         if (mActionMode != null) {
-          ((TargetAdapter) lv.getAdapter()).toggleSelection(position);
+          ((TargetAdapter)lv.getAdapter()).toggleSelection(position);
           return;
         }
 
-        Target target = (Target) mTargetAdapter.getItem(position);
+        Target target = (Target)mTargetAdapter.getItem(position);
         System.setCurrentTarget(target);
 
         new Thread(new Runnable() {
           @Override
           public void run() {
 
-            startActivityForResult(new Intent(MainActivity.this,
-                    ActionActivity.class), WIFI_CONNECTION_REQUEST);
+            startActivityForResult(
+                new Intent(MainActivity.this, ActionActivity.class),
+                WIFI_CONNECTION_REQUEST);
 
             overridePendingTransition(R.anim.fadeout, R.anim.fadein);
-
           }
         }).start();
 
-        Toast.makeText(MainActivity.this,
-                getString(R.string.selected_) + System.getCurrentTarget(),
-                Toast.LENGTH_SHORT).show();
-
+        Toast
+            .makeText(MainActivity.this,
+                      getString(R.string.selected_) + System.getCurrentTarget(),
+                      Toast.LENGTH_SHORT)
+            .show();
       }
     });
 
     isWifiAvailable = Network.isWifiConnected(this);
-    connectivityAvailable = isWifiAvailable || Network.isConnectivityAvailable(this);
+    connectivityAvailable =
+        isWifiAvailable || Network.isConnectivityAvailable(this);
 
     // make sure system object was correctly initialized during application
     // startup
@@ -458,19 +459,20 @@ public class MainActivity extends AppCompatActivity {
   private void targetAliasPrompt(final Target target) {
 
     new InputDialog(getString(R.string.target_alias),
-            getString(R.string.set_alias),
-            target.hasAlias() ? target.getAlias() : "", true,
-            false, MainActivity.this, new InputDialogListener() {
-      @Override
-      public void onInputEntered(String input) {
-        target.setAlias(input);
-        mTargetAdapter.notifyDataSetChanged();
-      }
-    }).show();
+                    getString(R.string.set_alias),
+                    target.hasAlias() ? target.getAlias() : "", true, false,
+                    MainActivity.this,
+                    new InputDialogListener() {
+                      @Override
+                      public void onInputEntered(String input) {
+                        target.setAlias(input);
+                        mTargetAdapter.notifyDataSetChanged();
+                      }
+                    })
+        .show();
   }
 
   private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
-
     public boolean onCreateActionMode(ActionMode mode, Menu menu) {
       MenuInflater inflater = mode.getMenuInflater();
       inflater.inflate(R.menu.main_multi, menu);
@@ -479,10 +481,13 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
       int i = mTargetAdapter.getSelectedCount();
-      mode.setTitle(i + " " + getString((i > 1 ? R.string.targets_selected : R.string.target_selected)));
+      mode.setTitle(i + " " +
+                    getString((i > 1 ? R.string.targets_selected
+                                     : R.string.target_selected)));
       MenuItem item = menu.findItem(R.id.multi_action);
       if (item != null)
-        item.setIcon((i > 1 ? android.R.drawable.ic_dialog_dialer : android.R.drawable.ic_menu_edit));
+        item.setIcon((i > 1 ? android.R.drawable.ic_dialog_dialer
+                            : android.R.drawable.ic_menu_edit));
       return false;
     }
 
@@ -490,53 +495,62 @@ public class MainActivity extends AppCompatActivity {
       ArrayList<Plugin> commonPlugins = null;
 
       switch (item.getItemId()) {
-        case R.id.multi_action:
-          final int[] selected = mTargetAdapter.getSelectedPositions();
-          if (selected.length > 1) {
-            Target target = (Target) mTargetAdapter.getItem(selected[0]);
-            commonPlugins = System.getPluginsForTarget(target);
-            for (int i = 1; i < selected.length; i++) {
-              target = (Target) mTargetAdapter.getItem(selected[i]);
-              ArrayList<Plugin> targetPlugins = System.getPluginsForTarget(target);
-              ArrayList<Plugin> removeThem = new ArrayList<Plugin>();
-              for (Plugin p : commonPlugins) {
-                if (!targetPlugins.contains(p))
-                  removeThem.add(p);
-              }
-              for (Plugin p : removeThem) {
-                commonPlugins.remove(p);
-              }
+      case R.id.multi_action:
+        final int[] selected = mTargetAdapter.getSelectedPositions();
+        if (selected.length > 1) {
+          Target target = (Target)mTargetAdapter.getItem(selected[0]);
+          commonPlugins = System.getPluginsForTarget(target);
+          for (int i = 1; i < selected.length; i++) {
+            target = (Target)mTargetAdapter.getItem(selected[i]);
+            ArrayList<Plugin> targetPlugins =
+                System.getPluginsForTarget(target);
+            ArrayList<Plugin> removeThem = new ArrayList<Plugin>();
+            for (Plugin p : commonPlugins) {
+              if (!targetPlugins.contains(p))
+                removeThem.add(p);
             }
-            if (commonPlugins.size() > 0) {
-              final int[] actions = new int[commonPlugins.size()];
-              for (int i = 0; i < actions.length; i++)
-                actions[i] = commonPlugins.get(i).getName();
-
-              (new MultipleChoiceDialog(R.string.choose_method, actions, MainActivity.this, new MultipleChoiceDialog.MultipleChoiceDialogListener() {
-                @Override
-                public void onChoice(int[] choices) {
-                  Intent intent = new Intent(MainActivity.this, MultiAttackService.class);
-                  int[] selectedActions = new int[choices.length];
-
-                  for (int i = 0; i < selectedActions.length; i++)
-                    selectedActions[i] = actions[choices[i]];
-
-                  intent.putExtra(MultiAttackService.MULTI_TARGETS, selected);
-                  intent.putExtra(MultiAttackService.MULTI_ACTIONS, selectedActions);
-
-                  startService(intent);
-                }
-              })).show();
-            } else {
-              (new ErrorDialog(getString(R.string.error), "no common actions found", MainActivity.this)).show();
+            for (Plugin p : removeThem) {
+              commonPlugins.remove(p);
             }
-          } else {
-            targetAliasPrompt((Target) mTargetAdapter.getItem(selected[0]));
           }
-          mode.finish(); // Action picked, so close the CAB
-          return true;
-        default:
-          return false;
+          if (commonPlugins.size() > 0) {
+            final int[] actions = new int[commonPlugins.size()];
+            for (int i = 0; i < actions.length; i++)
+              actions[i] = commonPlugins.get(i).getName();
+
+            (new MultipleChoiceDialog(
+                 R.string.choose_method, actions, MainActivity.this,
+                 new MultipleChoiceDialog.MultipleChoiceDialogListener() {
+                   @Override
+                   public void onChoice(int[] choices) {
+                     Intent intent = new Intent(MainActivity.this,
+                                                MultiAttackService.class);
+                     int[] selectedActions = new int[choices.length];
+
+                     for (int i = 0; i < selectedActions.length; i++)
+                       selectedActions[i] = actions[choices[i]];
+
+                     intent.putExtra(MultiAttackService.MULTI_TARGETS,
+                                     selected);
+                     intent.putExtra(MultiAttackService.MULTI_ACTIONS,
+                                     selectedActions);
+
+                     startService(intent);
+                   }
+                 }))
+                .show();
+          } else {
+            (new ErrorDialog(getString(R.string.error),
+                             "no common actions found", MainActivity.this))
+                .show();
+          }
+        } else {
+          targetAliasPrompt((Target)mTargetAdapter.getItem(selected[0]));
+        }
+        mode.finish(); // Action picked, so close the CAB
+        return true;
+      default:
+        return false;
       }
     }
 
@@ -580,7 +594,7 @@ public class MainActivity extends AppCompatActivity {
     new Thread(new Runnable() {
       @Override
       public void run() {
-        if(Services.getMsfRpcdService().isAvailable())
+        if (Services.getMsfRpcdService().isAvailable())
           Services.getMsfRpcdService().start();
       }
     }).start();
@@ -602,179 +616,190 @@ public class MainActivity extends AppCompatActivity {
   public boolean onOptionsItemSelected(final MenuItem item) {
     switch (item.getItemId()) {
 
-      case R.id.add:
-        new InputDialog(getString(R.string.add_custom_target),
-                getString(R.string.enter_url), MainActivity.this,
-                new InputDialogListener() {
-                  @Override
-                  public void onInputEntered(String input) {
-                    final Target target = Target.getFromString(input);
-                    if (target != null) {
-                      ThreadHelper.getSharedExecutor().execute(new Runnable() {
+    case R.id.add:
+      new InputDialog(getString(R.string.add_custom_target),
+                      getString(R.string.enter_url), MainActivity.this,
+                      new InputDialogListener() {
                         @Override
-                        public void run() {
-                          System.addOrderedTarget(target);
-                        }
-                      });
-                    } else
-                      new ErrorDialog(getString(R.string.error),
-                              getString(R.string.invalid_target),
-                              MainActivity.this).show();
-                  }
-                }).show();
-        return true;
-
-      case R.id.scan:
-        startNetworkRadar();
-        return true;
-
-      case R.id.wifi_scan:
-        stopNetworkRadar();
-
-        mRadarReceiver.unregister();
-        mUpdateReceiver.unregister();
-
-        startActivityForResult(new Intent(MainActivity.this,
-                WifiScannerActivity.class), WIFI_CONNECTION_REQUEST);
-        overridePendingTransition(R.anim.fadeout, R.anim.fadein);
-        return true;
-
-      case R.id.new_session:
-        new ConfirmDialog(getString(R.string.warning),
-                getString(R.string.warning_new_session), this,
-                new ConfirmDialogListener() {
-                  @Override
-                  public void onConfirm() {
-                    try {
-                      System.reset();
-                      mTargetAdapter.notifyDataSetChanged();
-
-                      Toast.makeText(
-                              MainActivity.this,
-                              getString(R.string.new_session_started),
-                              Toast.LENGTH_SHORT).show();
-                    } catch (Exception e) {
-                      new FatalDialog(getString(R.string.error), e
-                              .toString(), MainActivity.this).show();
-                    }
-                  }
-
-                  @Override
-                  public void onCancel() {
-                  }
-
-                }).show();
-
-        return true;
-
-      case R.id.save_session:
-        new InputDialog(getString(R.string.save_session),
-                getString(R.string.enter_session_name),
-                System.getSessionName(), true, false, MainActivity.this,
-                new InputDialogListener() {
-                  @Override
-                  public void onInputEntered(String input) {
-                    String name = input.trim().replace("/", "")
-                            .replace("..", "");
-
-                    if (!name.isEmpty()) {
-                      try {
-                        String filename = System.saveSession(name);
-
-                        Toast.makeText(
-                                MainActivity.this,
-                                getString(R.string.session_saved_to)
-                                        + filename + " .",
-                                Toast.LENGTH_SHORT).show();
-                      } catch (IOException e) {
-                        new ErrorDialog(getString(R.string.error),
-                                e.toString(), MainActivity.this)
+                        public void onInputEntered(String input) {
+                          final Target target = Target.getFromString(input);
+                          if (target != null) {
+                            ThreadHelper.getSharedExecutor().execute(
+                                new Runnable() {
+                                  @Override
+                                  public void run() {
+                                    System.addOrderedTarget(target);
+                                  }
+                                });
+                          } else
+                            new ErrorDialog(getString(R.string.error),
+                                            getString(R.string.invalid_target),
+                                            MainActivity.this)
                                 .show();
-                      }
-                    } else
-                      new ErrorDialog(getString(R.string.error),
-                              getString(R.string.invalid_session),
-                              MainActivity.this).show();
-                  }
-                }).show();
-        return true;
+                        }
+                      })
+          .show();
+      return true;
 
-      case R.id.restore_session:
-        final ArrayList<String> sessions = System
-                .getAvailableSessionFiles();
+    case R.id.scan:
+      startNetworkRadar();
+      return true;
 
-        if (sessions != null && sessions.size() > 0) {
-          new SpinnerDialog(getString(R.string.select_session),
-                  getString(R.string.select_session_file),
-                  sessions.toArray(new String[sessions.size()]),
-                  MainActivity.this, new SpinnerDialogListener() {
+    case R.id.wifi_scan:
+      stopNetworkRadar();
+
+      mRadarReceiver.unregister();
+      mUpdateReceiver.unregister();
+
+      startActivityForResult(
+          new Intent(MainActivity.this, WifiScannerActivity.class),
+          WIFI_CONNECTION_REQUEST);
+      overridePendingTransition(R.anim.fadeout, R.anim.fadein);
+      return true;
+
+    case R.id.new_session:
+      new ConfirmDialog(getString(R.string.warning),
+                        getString(R.string.warning_new_session), this,
+                        new ConfirmDialogListener() {
+                          @Override
+                          public void onConfirm() {
+                            try {
+                              System.reset();
+                              mTargetAdapter.notifyDataSetChanged();
+
+                              Toast
+                                  .makeText(
+                                      MainActivity.this,
+                                      getString(R.string.new_session_started),
+                                      Toast.LENGTH_SHORT)
+                                  .show();
+                            } catch (Exception e) {
+                              new FatalDialog(getString(R.string.error),
+                                              e.toString(), MainActivity.this)
+                                  .show();
+                            }
+                          }
+
+                          @Override
+                          public void onCancel() {}
+                        })
+          .show();
+
+      return true;
+
+    case R.id.save_session:
+      new InputDialog(
+          getString(R.string.save_session),
+          getString(R.string.enter_session_name), System.getSessionName(), true,
+          false, MainActivity.this,
+          new InputDialogListener() {
             @Override
-            public void onItemSelected(int index) {
-              String session = sessions.get(index);
+            public void onInputEntered(String input) {
+              String name = input.trim().replace("/", "").replace("..", "");
 
-              try {
-                System.loadSession(session);
-                mTargetAdapter.notifyDataSetChanged();
-              } catch (Exception e) {
-                e.printStackTrace();
+              if (!name.isEmpty()) {
+                try {
+                  String filename = System.saveSession(name);
+
+                  Toast
+                      .makeText(MainActivity.this,
+                                getString(R.string.session_saved_to) +
+                                    filename + " .",
+                                Toast.LENGTH_SHORT)
+                      .show();
+                } catch (IOException e) {
+                  new ErrorDialog(getString(R.string.error), e.toString(),
+                                  MainActivity.this)
+                      .show();
+                }
+              } else
                 new ErrorDialog(getString(R.string.error),
-                        e.getMessage(), MainActivity.this)
-                        .show();
-              }
+                                getString(R.string.invalid_session),
+                                MainActivity.this)
+                    .show();
             }
-          }).show();
-        } else
-          new ErrorDialog(getString(R.string.error),
-                  getString(R.string.no_session_found), MainActivity.this)
-                  .show();
-        return true;
+          })
+          .show();
+      return true;
 
-      case R.id.settings:
-        startActivity(new Intent(MainActivity.this, SettingsActivity.class));
-        overridePendingTransition(R.anim.fadeout, R.anim.fadein);
-        return true;
+    case R.id.restore_session:
+      final ArrayList<String> sessions = System.getAvailableSessionFiles();
 
-      case R.id.ss_monitor:
-        new Thread(new Runnable() {
-          @Override
-          public void run() {
-            Services.getNetworkRadar().onMenuClick(MainActivity.this, item);
-          }
-        }).start();
-        return true;
+      if (sessions != null && sessions.size() > 0) {
+        new SpinnerDialog(
+            getString(R.string.select_session),
+            getString(R.string.select_session_file),
+            sessions.toArray(new String[sessions.size()]), MainActivity.this,
+            new SpinnerDialogListener() {
+              @Override
+              public void onItemSelected(int index) {
+                String session = sessions.get(index);
 
-      case R.id.ss_msfrpcd:
-        new Thread(new Runnable() {
-          @Override
-          public void run() {
-            Services.getMsfRpcdService().onMenuClick(MainActivity.this, item);
-          }
-        }).start();
-        return true;
+                try {
+                  System.loadSession(session);
+                  mTargetAdapter.notifyDataSetChanged();
+                } catch (Exception e) {
+                  e.printStackTrace();
+                  new ErrorDialog(getString(R.string.error), e.getMessage(),
+                                  MainActivity.this)
+                      .show();
+                }
+              }
+            })
+            .show();
+      } else
+        new ErrorDialog(getString(R.string.error),
+                        getString(R.string.no_session_found), MainActivity.this)
+            .show();
+      return true;
 
-      case R.id.submit_issue:
-        String uri = getString(R.string.github_new_issue_url);
-        Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-        startActivity(browser);
-        // for fat-tire:
-        //   String.format(getString(R.string.issue_message), getString(R.string.github_issues_url), getString(R.string.github_new_issue_url));
-        return true;
+    case R.id.settings:
+      startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+      overridePendingTransition(R.anim.fadeout, R.anim.fadein);
+      return true;
 
-      case R.id.about:
-        new AboutDialog(this).show();
-        return true;
+    case R.id.ss_monitor:
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          Services.getNetworkRadar().onMenuClick(MainActivity.this, item);
+        }
+      }).start();
+      return true;
 
-      default:
-        return super.onOptionsItemSelected(item);
+    case R.id.ss_msfrpcd:
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          Services.getMsfRpcdService().onMenuClick(MainActivity.this, item);
+        }
+      }).start();
+      return true;
+
+    case R.id.submit_issue:
+      String uri = getString(R.string.github_new_issue_url);
+      Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+      startActivity(browser);
+      // for fat-tire:
+      //   String.format(getString(R.string.issue_message),
+      //   getString(R.string.github_issues_url),
+      //   getString(R.string.github_new_issue_url));
+      return true;
+
+    case R.id.about:
+      new AboutDialog(this).show();
+      return true;
+
+    default:
+      return super.onOptionsItemSelected(item);
     }
   }
-
 
   @Override
   public void onBackPressed() {
     if (mLastBackPressTime < java.lang.System.currentTimeMillis() - 4000) {
       mToast = Toast.makeText(this, getString(R.string.press_back),
-              Toast.LENGTH_SHORT);
+                              Toast.LENGTH_SHORT);
       mToast.show();
       mLastBackPressTime = java.lang.System.currentTimeMillis();
     } else {
@@ -782,17 +807,17 @@ public class MainActivity extends AppCompatActivity {
         mToast.cancel();
 
       new ConfirmDialog(getString(R.string.exit),
-              getString(R.string.close_confirm), this,
-              new ConfirmDialogListener() {
-                @Override
-                public void onConfirm() {
-                  MainActivity.this.finish();
-                }
+                        getString(R.string.close_confirm), this,
+                        new ConfirmDialogListener() {
+                          @Override
+                          public void onConfirm() {
+                            MainActivity.this.finish();
+                          }
 
-                @Override
-                public void onCancel() {
-                }
-              }).show();
+                          @Override
+                          public void onCancel() {}
+                        })
+          .show();
 
       mLastBackPressTime = 0;
     }
@@ -817,7 +842,8 @@ public class MainActivity extends AppCompatActivity {
   public class TargetAdapter extends BaseAdapter implements Runnable, Observer {
 
     private List<Target> list = System.getTargets();
-    private boolean isDark = getSharedPreferences("THEME", 0).getBoolean("isDark", false);
+    private boolean isDark =
+        getSharedPreferences("THEME", 0).getBoolean("isDark", false);
 
     @Override
     public int getCount() {
@@ -840,41 +866,47 @@ public class MainActivity extends AppCompatActivity {
       TargetHolder holder;
 
       if (row == null) {
-        LayoutInflater inflater = (LayoutInflater) MainActivity.this
-                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        LayoutInflater inflater =
+            (LayoutInflater)MainActivity.this.getSystemService(
+                Context.LAYOUT_INFLATER_SERVICE);
         row = inflater.inflate(R.layout.target_list_item, parent, false);
 
         if (isDark)
           row.setBackgroundResource(R.drawable.card_background_dark);
 
         holder = new TargetHolder();
-        holder.itemImage = (ImageView) (row != null ? row
-                .findViewById(R.id.itemIcon) : null);
-        holder.itemTitle = (TextView) (row != null ? row
-                .findViewById(R.id.itemTitle) : null);
-        holder.itemDescription = (TextView) (row != null ? row
-                .findViewById(R.id.itemDescription) : null);
-        holder.portCount = (TextView) (row != null ? row
-                .findViewById(R.id.portCount) : null);
-        holder.portCountLayout = (LinearLayout) (row != null ? row
-                .findViewById(R.id.portCountLayout) : null);
+        holder.itemImage =
+            (ImageView)(row != null ? row.findViewById(R.id.itemIcon) : null);
+        holder.itemTitle =
+            (TextView)(row != null ? row.findViewById(R.id.itemTitle) : null);
+        holder.itemDescription =
+            (TextView)(row != null ? row.findViewById(R.id.itemDescription)
+                                   : null);
+        holder.portCount =
+            (TextView)(row != null ? row.findViewById(R.id.portCount) : null);
+        holder.portCountLayout =
+            (LinearLayout)(row != null ? row.findViewById(R.id.portCountLayout)
+                                       : null);
         if (isDark)
-            holder.portCountLayout.setBackgroundResource(R.drawable.rounded_square_grey);
+          holder.portCountLayout.setBackgroundResource(
+              R.drawable.rounded_square_grey);
         if (row != null)
           row.setTag(holder);
       } else
-        holder = (TargetHolder) row.getTag();
+        holder = (TargetHolder)row.getTag();
 
       final Target target = list.get(position);
 
-      if (target.hasAlias()){
-        holder.itemTitle.setText(Html.fromHtml("<b>"
-                + target.getAlias() + "</b> <small>( "
-                + target.getDisplayAddress() + " )</small>"));
+      if (target.hasAlias()) {
+        holder.itemTitle.setText(
+            Html.fromHtml("<b>" + target.getAlias() + "</b> <small>( " +
+                          target.getDisplayAddress() + " )</small>"));
       } else {
         holder.itemTitle.setText(target.toString());
       }
-      holder.itemTitle.setTextColor(ContextCompat.getColor(getApplicationContext(), (target.isConnected() ? R.color.app_color : R.color.gray_text)));
+      holder.itemTitle.setTextColor(ContextCompat.getColor(
+          getApplicationContext(),
+          (target.isConnected() ? R.color.app_color : R.color.gray_text)));
 
       holder.itemTitle.setTypeface(null, Typeface.NORMAL);
       holder.itemImage.setImageResource(target.getDrawableResourceId());
@@ -883,7 +915,8 @@ public class MainActivity extends AppCompatActivity {
       int openedPorts = target.getOpenPorts().size();
 
       holder.portCount.setText(String.format("%d", openedPorts));
-      holder.portCountLayout.setVisibility(openedPorts < 1 ? View.GONE : View.VISIBLE);
+      holder.portCountLayout.setVisibility(openedPorts < 1 ? View.GONE
+                                                           : View.VISIBLE);
       return row;
     }
 
@@ -946,9 +979,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void update(Observable observable, Object data) {
-      final Target target = (Target) data;
+      final Target target = (Target)data;
 
-      if(target == null) {
+      if (target == null) {
         // update the whole list
         MainActivity.this.runOnUiThread(this);
         return;
@@ -958,7 +991,7 @@ public class MainActivity extends AppCompatActivity {
       MainActivity.this.runOnUiThread(new Runnable() {
         @Override
         public void run() {
-          if(lv == null)
+          if (lv == null)
             return;
 
           synchronized (this) {
@@ -973,14 +1006,11 @@ public class MainActivity extends AppCompatActivity {
           }
         }
       });
-
     }
 
     @Override
     public void run() {
-      synchronized (this) {
-        list = System.getTargets();
-      }
+      synchronized (this) { list = System.getTargets(); }
       notifyDataSetChanged();
     }
 
@@ -1002,9 +1032,7 @@ public class MainActivity extends AppCompatActivity {
       mFilter.addAction(SettingsActivity.SETTINGS_WIPE_START);
     }
 
-    public IntentFilter getFilter() {
-      return mFilter;
-    }
+    public IntentFilter getFilter() { return mFilter; }
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -1020,21 +1048,23 @@ public class MainActivity extends AppCompatActivity {
           }
 
           StopRPCServer();
-          System.getTools().raw.async("rm -rf '" + path + "'", new Child.EventReceiver() {
-            @Override
-            public void onEnd(int exitCode) {
-              MainActivity.this.sendBroadcast(new Intent(SettingsActivity.SETTINGS_WIPE_DONE));
-            }
+          System.getTools().raw.async(
+              "rm -rf '" + path + "'", new Child.EventReceiver() {
+                @Override
+                public void onEnd(int exitCode) {
+                  MainActivity.this.sendBroadcast(
+                      new Intent(SettingsActivity.SETTINGS_WIPE_DONE));
+                }
 
-            @Override
-            public void onDeath(int signal) {
-              MainActivity.this.sendBroadcast(new Intent(SettingsActivity.SETTINGS_WIPE_DONE));
-            }
+                @Override
+                public void onDeath(int signal) {
+                  MainActivity.this.sendBroadcast(
+                      new Intent(SettingsActivity.SETTINGS_WIPE_DONE));
+                }
 
-            @Override
-            public void onEvent(Event e) {
-            }
-          });
+                @Override
+                public void onEvent(Event e) {}
+              });
         } catch (Exception e) {
           System.errorLogging(e);
         }
@@ -1055,53 +1085,55 @@ public class MainActivity extends AppCompatActivity {
       mFilter.addAction(UpdateService.DONE);
     }
 
-    public IntentFilter getFilter() {
-      return mFilter;
-    }
+    public IntentFilter getFilter() { return mFilter; }
 
-    private void onUpdateAvailable(final Update update, final boolean mandatory) {
+    private void onUpdateAvailable(final Update update,
+                                   final boolean mandatory) {
       MainActivity.this.runOnUiThread(new Runnable() {
         @Override
         public void run() {
-          new ConfirmDialog(getString(R.string.update_available),
-                  update.prompt, MainActivity.this, new ConfirmDialogListener() {
-            @Override
-            public void onConfirm() {
-              StopRPCServer();
-              Intent i = new Intent(MainActivity.this, UpdateService.class);
-              i.setAction(UpdateService.START);
-              i.putExtra(UpdateService.UPDATE, update);
+          new ConfirmDialog(
+              getString(R.string.update_available), update.prompt,
+              MainActivity.this,
+              new ConfirmDialogListener() {
+                @Override
+                public void onConfirm() {
+                  StopRPCServer();
+                  Intent i = new Intent(MainActivity.this, UpdateService.class);
+                  i.setAction(UpdateService.START);
+                  i.putExtra(UpdateService.UPDATE, update);
 
-              startService(i);
-            }
+                  startService(i);
+                }
 
-            @Override
-            public void onCancel() {
-              if (!mandatory) {
-                return;
-              }
+                @Override
+                public void onCancel() {
+                  if (!mandatory) {
+                    return;
+                  }
 
-              onInitializationError(getString(R.string.mandatory_update));
-            }
-          }
-          ).show();
+                  onInitializationError(getString(R.string.mandatory_update));
+                }
+              })
+              .show();
         }
       });
     }
 
     private void onUpdateAvailable(Update update) {
-      onUpdateAvailable(update, (update instanceof CoreUpdate) && !System.isCoreInstalled());
+      onUpdateAvailable(update, (update instanceof CoreUpdate) &&
+                                    !System.isCoreInstalled());
     }
 
     private void onUpdateDone(Update update) {
 
       System.reloadTools();
 
-      if((update instanceof MsfUpdate) || (update instanceof RubyUpdate)) {
+      if ((update instanceof MsfUpdate) || (update instanceof RubyUpdate)) {
         StartRPCServer();
       }
 
-      if(update instanceof CoreUpdate) {
+      if (update instanceof CoreUpdate) {
         onCoreUpdated();
       }
 
@@ -1119,8 +1151,9 @@ public class MainActivity extends AppCompatActivity {
       MainActivity.this.runOnUiThread(new Runnable() {
         @Override
         public void run() {
-          new ErrorDialog(getString(R.string.error),
-                  getString(message), MainActivity.this).show();
+          new ErrorDialog(getString(R.string.error), getString(message),
+                          MainActivity.this)
+              .show();
         }
       });
 
@@ -1133,35 +1166,36 @@ public class MainActivity extends AppCompatActivity {
       String action = intent.getAction();
       Update update = null;
 
-      if(intent.hasExtra(UpdateService.UPDATE)) {
-        update = (Update) intent.getSerializableExtra(UpdateService.UPDATE);
+      if (intent.hasExtra(UpdateService.UPDATE)) {
+        update = (Update)intent.getSerializableExtra(UpdateService.UPDATE);
       }
 
       switch (action) {
-        case UPDATE_CHECKING:
-          if (mUpdateStatus != null)
-            mUpdateStatus.setText(UPDATE_MESSAGE.replace(
-                    "#STATUS#", getString(R.string.checking)));
-          break;
-        case UPDATE_NOT_AVAILABLE:
-          if (mUpdateStatus != null)
-            mUpdateStatus.setText(UPDATE_MESSAGE.replace(
-                    "#STATUS#", getString(R.string.no_updates_available)));
+      case UPDATE_CHECKING:
+        if (mUpdateStatus != null)
+          mUpdateStatus.setText(
+              UPDATE_MESSAGE.replace("#STATUS#", getString(R.string.checking)));
+        break;
+      case UPDATE_NOT_AVAILABLE:
+        if (mUpdateStatus != null)
+          mUpdateStatus.setText(UPDATE_MESSAGE.replace(
+              "#STATUS#", getString(R.string.no_updates_available)));
 
-          if (!System.isCoreInstalled()) {
-            onInitializationError(getString(R.string.no_core_found));
-          }
-          break;
-        case UPDATE_AVAILABLE:
-          onUpdateAvailable(update);
-          break;
-        case UpdateService.DONE:
-          onUpdateDone(update);
-          break;
-        case UpdateService.ERROR:
-          int message = intent.getIntExtra(UpdateService.MESSAGE, R.string.error_occured);
-          onUpdateError(update, message);
-          break;
+        if (!System.isCoreInstalled()) {
+          onInitializationError(getString(R.string.no_core_found));
+        }
+        break;
+      case UPDATE_AVAILABLE:
+        onUpdateAvailable(update);
+        break;
+      case UpdateService.DONE:
+        onUpdateDone(update);
+        break;
+      case UpdateService.ERROR:
+        int message =
+            intent.getIntExtra(UpdateService.MESSAGE, R.string.error_occured);
+        onUpdateError(update, message);
+        break;
       }
     }
   }

@@ -18,27 +18,19 @@
  */
 package org.csploit.android.net.http.proxy;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import org.csploit.android.core.Logger;
 import org.csploit.android.core.Profiler;
 import org.csploit.android.core.System;
 import org.csploit.android.net.ByteBuffer;
 import org.csploit.android.net.http.RequestParser;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-
-public class StreamThread implements Runnable
-{
-  private final static String[] FILTERED_CONTENT_TYPES = new String[]
-    {
-      "/html",
-      "/css",
-      "/javascript",
-      "/javascript",
-      "/x-javascript"
-    };
+public class StreamThread implements Runnable {
+  private final static String[] FILTERED_CONTENT_TYPES = new String[] {
+      "/html", "/css", "/javascript", "/javascript", "/x-javascript"};
 
   private final static String HEAD_SEPARATOR = "\r\n\r\n";
   private final static int CHUNK_SIZE = 1024;
@@ -49,7 +41,8 @@ public class StreamThread implements Runnable
   private ByteBuffer mBuffer = null;
   private Proxy.ProxyFilter mFilter = null;
 
-  public StreamThread(String client, InputStream reader, OutputStream writer, Proxy.ProxyFilter filter){
+  public StreamThread(String client, InputStream reader, OutputStream writer,
+                      Proxy.ProxyFilter filter) {
     mClient = client;
     mReader = reader;
     mWriter = writer;
@@ -59,57 +52,61 @@ public class StreamThread implements Runnable
     new Thread(this).start();
   }
 
-  public void run(){
+  public void run() {
 
-    int read = -1,
-      size = 0,
-      max = 0;
+    int read = -1, size = 0, max = 0;
     byte[] chunk = new byte[CHUNK_SIZE];
 
-    try{
-      max = Integer.parseInt(System.getSettings().getString("PREF_HTTP_MAX_BUFFER_SIZE", "10485760"));
-    } catch(NumberFormatException e){
+    try {
+      max = Integer.parseInt(System.getSettings().getString(
+          "PREF_HTTP_MAX_BUFFER_SIZE", "10485760"));
+    } catch (NumberFormatException e) {
       max = 10485760;
     }
 
-    try{
-      String location = null,
-        contentType = null;
-      boolean wasContentTypeChecked = false,
-        isHandledContentType = false;
+    try {
+      String location = null, contentType = null;
+      boolean wasContentTypeChecked = false, isHandledContentType = false;
 
       Profiler.instance().profile("chunk read");
 
-      while((read = mReader.read(chunk, 0, CHUNK_SIZE)) > 0 && size < max){
+      while ((read = mReader.read(chunk, 0, CHUNK_SIZE)) > 0 && size < max) {
         Profiler.instance().emit();
 
         mBuffer.append(chunk, read);
         size += read;
 
-        location = location == null ? RequestParser.getHeaderValue(RequestParser.LOCATION_HEADER, mBuffer) : location;
-        contentType = contentType == null ? RequestParser.getHeaderValue(RequestParser.CONTENT_TYPE_HEADER, mBuffer) : contentType;
+        location = location == null
+                       ? RequestParser.getHeaderValue(
+                             RequestParser.LOCATION_HEADER, mBuffer)
+                       : location;
+        contentType = contentType == null
+                          ? RequestParser.getHeaderValue(
+                                RequestParser.CONTENT_TYPE_HEADER, mBuffer)
+                          : contentType;
 
-        if(contentType != null && wasContentTypeChecked == false){
+        if (contentType != null && wasContentTypeChecked == false) {
           wasContentTypeChecked = true;
           isHandledContentType = false;
 
-          for(String handled : FILTERED_CONTENT_TYPES){
-            if(contentType.contains(handled)){
+          for (String handled : FILTERED_CONTENT_TYPES) {
+            if (contentType.contains(handled)) {
               isHandledContentType = true;
               break;
             }
           }
 
           // not handled content type, start fast streaming
-          if(isHandledContentType == false){
+          if (isHandledContentType == false) {
             Profiler.instance().profile("Fast streaming");
 
-            Logger.debug("Content type " + contentType + " not handled, start fast streaming ...");
+            Logger.debug("Content type " + contentType +
+                         " not handled, start fast streaming ...");
 
             mWriter.write(mBuffer.getData());
             mWriter.flush();
 
-            while((read = mReader.read(chunk, 0, CHUNK_SIZE)) > 0){
+            while ((read = mReader.read(chunk, 0, CHUNK_SIZE)) > 0) {
               mWriter.write(chunk, 0, read);
               mWriter.flush();
             }
@@ -126,7 +123,7 @@ public class StreamThread implements Runnable
 
       // if we are here, this means we have a document to be filtered
       // ( handled content type )
-      if(mBuffer.isEmpty() == false){
+      if (mBuffer.isEmpty() == false) {
         Profiler.instance().profile("content filtering");
 
         String data = mBuffer.toString();
@@ -134,27 +131,32 @@ public class StreamThread implements Runnable
         String headers = split[0];
 
         // handle relocations for https support
-        if(location != null && location.startsWith("https://") && System.getSettings().getBoolean("PREF_HTTPS_REDIRECT", true) == true){
+        if (location != null && location.startsWith("https://") &&
+            System.getSettings().getBoolean("PREF_HTTPS_REDIRECT", true) ==
+                true) {
           Logger.warning("Patching 302 HTTPS redirect : " + location);
 
           // update variables for further filtering
-          mBuffer.replace("Location: https://".getBytes(), "Location: http://".getBytes());
+          mBuffer.replace("Location: https://".getBytes(),
+                          "Location: http://".getBytes());
 
           data = mBuffer.toString();
           split = data.split(HEAD_SEPARATOR, 2);
           headers = split[0];
 
-          HTTPSMonitor.getInstance().addURL(mClient, location.replace("https://", "http://").replace("&amp;", "&"));
+          HTTPSMonitor.getInstance().addURL(
+              mClient,
+              location.replace("https://", "http://").replace("&amp;", "&"));
         }
 
-        String body = (split.length > 1 ? split[1] : ""),
-          patched = "";
+        String body = (split.length > 1 ? split[1] : ""), patched = "";
 
         body = mFilter.onDataReceived(headers, body);
 
-        // remove explicit content length, just in case the body changed after filtering
-        for(String header : headers.split("\n")){
-          if(header.toLowerCase().contains("content-length") == false)
+        // remove explicit content length, just in case the body changed after
+        // filtering
+        for (String header : headers.split("\n")) {
+          if (header.toLowerCase().contains("content-length") == false)
             patched += header + "\n";
         }
 
@@ -163,22 +165,23 @@ public class StreamThread implements Runnable
         // try to get the charset encoding from the HTTP headers.
         String charset = RequestParser.getCharsetFromHeaders(contentType);
 
-        // if we haven't found the charset encoding on the HTTP headers, try it out on the body.
+        // if we haven't found the charset encoding on the HTTP headers, try it
+        // out on the body.
         if (charset == null) {
           charset = RequestParser.getCharsetFromBody(body);
         }
 
         if (charset != null) {
           try {
-            mBuffer.setData((headers + HEAD_SEPARATOR + body).getBytes(charset));
-          }
-          catch (UnsupportedEncodingException e){
+            mBuffer.setData(
+                (headers + HEAD_SEPARATOR + body).getBytes(charset));
+          } catch (UnsupportedEncodingException e) {
             Logger.error("UnsupportedEncoding: " + e.getLocalizedMessage());
             mBuffer.setData((headers + HEAD_SEPARATOR + body).getBytes());
           }
-        }
-        else {
-          // if we haven't found the charset encoding, just handle it on ByteBuffer()
+        } else {
+          // if we haven't found the charset encoding, just handle it on
+          // ByteBuffer()
           mBuffer.setData((headers + HEAD_SEPARATOR + body).getBytes());
         }
 
@@ -187,20 +190,17 @@ public class StreamThread implements Runnable
 
         Profiler.instance().emit();
       }
-    }
-    catch(OutOfMemoryError ome){
+    } catch (OutOfMemoryError ome) {
       Logger.error(ome.toString());
-    }
-    catch(Exception e){
+    } catch (Exception e) {
       System.errorLogging(e);
-    }
-    finally{
-      try{
+    } finally {
+      try {
         mWriter.flush();
         mWriter.close();
         mReader.close();
+      } catch (IOException e) {
       }
-      catch(IOException e){ }
     }
   }
 }

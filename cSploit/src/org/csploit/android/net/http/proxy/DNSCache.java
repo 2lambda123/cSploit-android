@@ -18,26 +18,21 @@
  */
 package org.csploit.android.net.http.proxy;
 
-import org.csploit.android.core.Logger;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
-
 import javax.net.SocketFactory;
+import org.csploit.android.core.Logger;
 
-public class DNSCache
-{
+public class DNSCache {
   private static DNSCache mInstance = new DNSCache();
 
   private final HashMap<String, InetAddress> mCache;
   private final ArrayList<String> mRootDomainCache;
 
-  public static DNSCache getInstance(){
-    return mInstance;
-  }
+  public static DNSCache getInstance() { return mInstance; }
 
   private DNSCache() {
     mCache = new HashMap<>();
@@ -50,7 +45,7 @@ public class DNSCache
    * @param hostname hostname to check
    * @return String the root domain or null
    */
-  public String getRootDomain(String hostname){
+  public String getRootDomain(String hostname) {
     synchronized (mRootDomainCache) {
       for (String rootDomain : mRootDomainCache) {
         if (hostname.endsWith(rootDomain)) {
@@ -68,32 +63,31 @@ public class DNSCache
    *
    * @param rootdomain Root domain to add to the list
    */
-  public void addRootDomain(String rootdomain){
-    synchronized (mRootDomainCache) {
-      mRootDomainCache.add(rootdomain);
-    }
+  public void addRootDomain(String rootdomain) {
+    synchronized (mRootDomainCache) { mRootDomainCache.add(rootdomain); }
   }
 
-  private InetAddress getAddress(String server) throws IOException{
+  private InetAddress getAddress(String server) throws IOException {
     InetAddress address = mCache.get(server);
 
-    if(address == null){
+    if (address == null) {
       address = InetAddress.getByName(server);
       mCache.put(server, address);
 
       Logger.debug(server + " resolved to " + address.getHostAddress());
-    }
-    else
-      Logger.debug("Returning a cached DSN result for " + server + " : " + address.getHostAddress());
+    } else
+      Logger.debug("Returning a cached DSN result for " + server + " : " +
+                   address.getHostAddress());
 
     return address;
   }
 
-  public Socket connect(String server, int port) throws IOException{
+  public Socket connect(String server, int port) throws IOException {
     return new Socket(getAddress(server), port);
   }
 
-  public Socket connect(SocketFactory factory, String server, int port) throws IOException{
+  public Socket connect(SocketFactory factory, String server, int port)
+      throws IOException {
     return factory.createSocket(getAddress(server), port);
   }
 }

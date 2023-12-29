@@ -26,20 +26,21 @@ public final class NetworkHelper {
 
   /**
    * compare two byte[] comparing their length and each of their values.
-   * @return -1 if {@code a} is less than {@code b}, 0 if are equals, +1 if {@code a} is greater than {@code b}
+   * @return -1 if {@code a} is less than {@code b}, 0 if are equals, +1 if
+   *     {@code a} is greater than {@code b}
    */
   public static int compareByteArray(byte[] a, byte[] b) {
     int result;
 
     result = a.length - b.length;
 
-    if(result != 0) {
+    if (result != 0) {
       return result;
     }
 
-    for(int i = 0; i < a.length; i++) {
-      result = ((short) a[i] & 0xFF) - ((short) b[i] & 0xFF);
-      if(result != 0) {
+    for (int i = 0; i < a.length; i++) {
+      result = ((short)a[i] & 0xFF) - ((short)b[i] & 0xFF);
+      if (result != 0) {
         return result;
       }
     }
@@ -49,7 +50,8 @@ public final class NetworkHelper {
 
   /**
    * compare two {@link InetAddress}
-   * @return -1 if {@code a} is less than {@code b}, 0 if are equals, +1 if {@code a} is greater than {@code b}
+   * @return -1 if {@code a} is less than {@code b}, 0 if are equals, +1 if
+   *     {@code a} is greater than {@code b}
    */
   public static int compareInetAddresses(InetAddress a, InetAddress b) {
     return compareByteArray(a.getAddress(), b.getAddress());

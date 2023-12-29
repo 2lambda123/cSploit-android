@@ -18,6 +18,14 @@
  */
 package org.csploit.android.net.datasource;
 
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.csploit.android.core.Logger;
 import org.csploit.android.core.System;
 import org.csploit.android.net.RemoteReader;
@@ -30,30 +38,25 @@ import org.csploit.android.net.reference.OSVDB;
 import org.csploit.android.net.reference.Reference;
 import org.unbescape.html.HtmlEscape;
 
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-class Rapid7
-{
+class Rapid7 {
   private static class ExploitReceiver implements RemoteReader.Receiver {
 
-    private static final Pattern SECTION = Pattern.compile("<section[^>]*>(.*?)</section>", Pattern.MULTILINE | Pattern.DOTALL);
+    private static final Pattern SECTION = Pattern.compile(
+        "<section[^>]*>(.*?)</section>", Pattern.MULTILINE | Pattern.DOTALL);
     private static final Pattern TITLE = Pattern.compile("<h1>(.+?)</h1>");
-    private static final Pattern PARAGRAPH = Pattern.compile("<p>(.+?)</p>", Pattern.MULTILINE | Pattern.DOTALL);
-    private static final Pattern ITEM = Pattern.compile("<li>(.*?)</li>", Pattern.MULTILINE | Pattern.DOTALL);
-    private static final Pattern LINK = Pattern.compile("<a +href=['\"]([^\"]+?)['\"][^>]*>([^<]+)</a>");
+    private static final Pattern PARAGRAPH =
+        Pattern.compile("<p>(.+?)</p>", Pattern.MULTILINE | Pattern.DOTALL);
+    private static final Pattern ITEM =
+        Pattern.compile("<li>(.*?)</li>", Pattern.MULTILINE | Pattern.DOTALL);
+    private static final Pattern LINK =
+        Pattern.compile("<a +href=['\"]([^\"]+?)['\"][^>]*>([^<]+)</a>");
 
     private final Search.Receiver<Target.Exploit> receiver;
     private final MsfExploit exploit;
     private final RemoteReader.Job job;
 
-    public ExploitReceiver(RemoteReader.Job job, MsfExploit exploit, Search.Receiver<Target.Exploit> receiver) {
+    public ExploitReceiver(RemoteReader.Job job, MsfExploit exploit,
+                           Search.Receiver<Target.Exploit> receiver) {
       this.job = job;
       this.exploit = exploit;
       this.receiver = receiver;
@@ -62,7 +65,7 @@ class Rapid7
     private static String getTitle(String section) {
       Matcher matcher = TITLE.matcher(section);
 
-      if(!matcher.find())
+      if (!matcher.find())
         return null;
       return new String(matcher.group(1).toCharArray());
     }
@@ -70,16 +73,17 @@ class Rapid7
     private static String getParagraph(String section) {
       Matcher matcher = PARAGRAPH.matcher(section);
 
-      if(!matcher.find())
+      if (!matcher.find())
         return null;
-      return HtmlEscape.unescapeHtml(matcher.group(1)).replaceAll("(?s)[\\r\\n\\s]+", " ");
+      return HtmlEscape.unescapeHtml(matcher.group(1))
+          .replaceAll("(?s)[\\r\\n\\s]+", " ");
     }
 
     private static ArrayList<String> getItems(String section) {
       Matcher matcher = ITEM.matcher(section);
       ArrayList<String> list = new ArrayList<String>();
 
-      while(matcher.find()) {
+      while (matcher.find()) {
         list.add(new String(matcher.group(1).toCharArray()));
       }
 
@@ -90,18 +94,18 @@ class Rapid7
       Matcher matcher = LINK.matcher(section);
       LinkedList<Reference> list = new LinkedList<Reference>();
 
-      while(matcher.find()) {
+      while (matcher.find()) {
         String link = matcher.group(1);
         String label = matcher.group(2);
         Reference ref;
 
-        if(label.startsWith("CVE-")) {
+        if (label.startsWith("CVE-")) {
           ref = new CVE(new String(label.substring(4).toCharArray()));
-        } else if(label.startsWith("OSVDB-")) {
+        } else if (label.startsWith("OSVDB-")) {
           ref = new OSVDB(Integer.parseInt(label.substring(6)));
         } else {
           ref = new Link(new String(label.toCharArray()),
-                  new String(link.toCharArray()));
+                         new String(link.toCharArray()));
         }
 
         list.add(ref);
@@ -114,7 +118,7 @@ class Rapid7
       Matcher matcher = ITEM.matcher(section);
       LinkedList<Author> list = new LinkedList<Author>();
 
-      while(matcher.find()) {
+      while (matcher.find()) {
         list.add(Author.fromString(HtmlEscape.unescapeHtml(matcher.group(1))));
       }
 
@@ -124,7 +128,7 @@ class Rapid7
     private static MsfExploit.Ranking getRanking(String section) {
       Matcher matcher = LINK.matcher(section);
 
-      if(!matcher.find())
+      if (!matcher.find())
         return null;
 
       return MsfExploit.Ranking.valueOf(matcher.group(2));
@@ -146,58 +150,60 @@ class Rapid7
 
       matcher = TITLE.matcher(html);
 
-      if(matcher.find()) {
+      if (matcher.find()) {
         summary = new String(matcher.group(1).toCharArray());
       }
 
       matcher = SECTION.matcher(html);
 
-      while(matcher.find()) {
+      while (matcher.find()) {
         String section = matcher.group(1);
         String title = getTitle(section);
 
-        if(title == null) {
-          if(description == null)
+        if (title == null) {
+          if (description == null)
             description = getParagraph(section);
           continue;
         }
 
-        if(title.equals("Module Name")) {
+        if (title.equals("Module Name")) {
           name = getParagraph(section);
-        } else if(title.equals("Authors")) {
+        } else if (title.equals("Authors")) {
           authors = getAuthors(section);
-        } else if(title.equals("References")) {
+        } else if (title.equals("References")) {
           references = getReferences(section);
-        } else if(title.equals("Targets")) {
+        } else if (title.equals("Targets")) {
           targets = getItems(section);
-        } else if(title.equals("Platforms")) {
+        } else if (title.equals("Platforms")) {
           platforms = getItems(section);
-        } else if(title.equals("Architectures")) {
+        } else if (title.equals("Architectures")) {
           architectures = getItems(section);
-        } else if(title.equals("Reliability")) {
+        } else if (title.equals("Reliability")) {
           ranking = getRanking(section);
         }
       }
 
       // name is a required field
-      if(name == null)
+      if (name == null)
         return null;
 
-      return new MsfExploit(name, summary, description, ranking, targets, authors, platforms, architectures, references);
+      return new MsfExploit(name, summary, description, ranking, targets,
+                            authors, platforms, architectures, references);
     }
 
-    public static void beginFetchReferences(RemoteReader.Job job, Target.Exploit exploit, Search.Receiver<Target.Exploit> receiver) {
-      for(Reference ref : exploit.getReferences()) {
+    public static void
+    beginFetchReferences(RemoteReader.Job job, Target.Exploit exploit,
+                         Search.Receiver<Target.Exploit> receiver) {
+      for (Reference ref : exploit.getReferences()) {
         try {
-          if(ref instanceof CVE) {
+          if (ref instanceof CVE) {
             job.add(((CVE)ref).getUrl(),
-                    new CVEDetails.Receiver(exploit, (CVE) ref, receiver));
+                    new CVEDetails.Receiver(exploit, (CVE)ref, receiver));
           } else if (ref instanceof Link) {
-            if(!ref.getName().startsWith("http"))
+            if (!ref.getName().startsWith("http"))
               continue;
 
-            job.add(((Link)ref).getUrl(),
-                    new Generic.Receiver((Link) ref));
+            job.add(((Link)ref).getUrl(), new Generic.Receiver((Link)ref));
           }
         } catch (MalformedURLException e) {
           Logger.error("Bad URL: " + ref);
@@ -212,7 +218,7 @@ class Rapid7
 
       MsfExploit result = parsePage(new String(content));
 
-      if(result == null)
+      if (result == null)
         return;
 
       result.copyTo(exploit);
@@ -230,9 +236,10 @@ class Rapid7
 
   private static class ResultsReceiver implements RemoteReader.Receiver {
 
-    private static final String  SEARCHFORMID = "search_form";
+    private static final String SEARCHFORMID = "search_form";
     private static final Pattern PAGES = Pattern.compile("[&?]page=([0-9]+)");
-    private static final Pattern RESULT = Pattern.compile("<a +href=['\"]/db/modules/(exploit/[^\"]+)['\"] *>([^<]+)</a>");
+    private static final Pattern RESULT = Pattern.compile(
+        "<a +href=['\"]/db/modules/(exploit/[^\"]+)['\"] *>([^<]+)</a>");
 
     private final Search.Receiver<Target.Exploit> receiver;
     private final RemoteReader.Job job;
@@ -241,14 +248,16 @@ class Rapid7
 
     private boolean analyzePagination = true;
 
-    public ResultsReceiver(RemoteReader.Job job, String url, Target.Port port, Search.Receiver<Target.Exploit> receiver) {
+    public ResultsReceiver(RemoteReader.Job job, String url, Target.Port port,
+                           Search.Receiver<Target.Exploit> receiver) {
       this.job = job;
       this.receiver = receiver;
       this.originalUrl = url;
       this.port = port;
     }
 
-    public ResultsReceiver(RemoteReader.Job job, String url, Search.Receiver<Target.Exploit> receiver) {
+    public ResultsReceiver(RemoteReader.Job job, String url,
+                           Search.Receiver<Target.Exploit> receiver) {
       this(job, url, null, receiver);
     }
 
@@ -256,9 +265,9 @@ class Rapid7
       Matcher matcher = PAGES.matcher(html);
       ArrayList<Integer> pages = new ArrayList<Integer>();
 
-      while(matcher.find()) {
+      while (matcher.find()) {
         Integer p = Integer.parseInt(matcher.group(1));
-        if(pages.contains(p))
+        if (pages.contains(p))
           continue;
         pages.add(p);
 
@@ -276,12 +285,12 @@ class Rapid7
       Matcher matcher = RESULT.matcher(html);
       MsfExploit ex;
 
-      while(matcher.find()) {
+      while (matcher.find()) {
         ex = new MsfExploit(new String(matcher.group(1).toCharArray()), port);
 
         receiver.onItemFound(ex);
 
-        if(ex.isSynced()) {
+        if (ex.isSynced()) {
           ExploitReceiver.beginFetchReferences(job, ex, receiver);
           continue;
         }
@@ -300,7 +309,7 @@ class Rapid7
       }
 
       synchronized (this) {
-        if(!analyzePagination) {
+        if (!analyzePagination) {
           return;
         }
         analyzePagination = false;
@@ -312,7 +321,7 @@ class Rapid7
     private void parseExploit(String html) {
       MsfExploit exploit = ExploitReceiver.parsePage(html);
 
-      if(exploit != null) {
+      if (exploit != null) {
         exploit.setPort(port);
 
         receiver.onItemFound(exploit);
@@ -323,7 +332,7 @@ class Rapid7
     public void onContentFetched(byte[] content) {
       String html = new String(content);
 
-      if(html.contains(SEARCHFORMID)) {
+      if (html.contains(SEARCHFORMID)) {
         parseSearchResults(html);
       } else {
         parseExploit(html);
@@ -341,7 +350,8 @@ class Rapid7
     }
   }
 
-  public void beginSearch(RemoteReader.Job job, String query, Target.Port port, Search.Receiver<Target.Exploit> receiver) {
+  public void beginSearch(RemoteReader.Job job, String query, Target.Port port,
+                          Search.Receiver<Target.Exploit> receiver) {
     String url;
 
     url = "https://www.rapid7.com/db/search?q=";
@@ -367,7 +377,8 @@ class Rapid7
     }
   }
 
-  public void beginSearch(RemoteReader.Job job, String query, Search.Receiver<Target.Exploit> receiver) {
+  public void beginSearch(RemoteReader.Job job, String query,
+                          Search.Receiver<Target.Exploit> receiver) {
     beginSearch(job, query, null, receiver);
   }
 }

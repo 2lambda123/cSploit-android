@@ -1,9 +1,5 @@
 package org.csploit.android.net;
 
-import org.apache.commons.compress.utils.IOUtils;
-import org.csploit.android.core.Logger;
-import org.csploit.android.core.System;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -20,6 +16,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.apache.commons.compress.utils.IOUtils;
+import org.csploit.android.core.Logger;
+import org.csploit.android.core.System;
 
 /**
  * take advantage of persistent HTTP connections
@@ -46,7 +45,9 @@ public class RemoteReader implements Runnable {
    * Asynchronous fetch job.
    *
    * waits that all pending urls get fetched and received.
-   * is possible to add more urls while the job is running using {@link org.csploit.android.net.RemoteReader.Job#add(String, org.csploit.android.net.RemoteReader.Receiver) add}
+   * is possible to add more urls while the job is running using {@link
+   * org.csploit.android.net.RemoteReader.Job#add(String,
+   * org.csploit.android.net.RemoteReader.Receiver) add}
    */
   public static class Job implements Future {
     private final Queue<Task> taskQueue = new ArrayDeque<Task>(5);
@@ -55,7 +56,7 @@ public class RemoteReader implements Runnable {
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
-      if(status == JobStatus.FINISHED || status == JobStatus.CANCELLED)
+      if (status == JobStatus.FINISHED || status == JobStatus.CANCELLED)
         return false;
 
       synchronized (taskQueue) {
@@ -87,7 +88,7 @@ public class RemoteReader implements Runnable {
     @Override
     public Object get() throws InterruptedException, ExecutionException {
       synchronized (taskQueue) {
-        while(taskQueue.size() > 0)
+        while (taskQueue.size() > 0)
           taskQueue.wait();
       }
 
@@ -95,38 +96,36 @@ public class RemoteReader implements Runnable {
     }
 
     @Override
-    public Object get(long l, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
+    public Object get(long l, TimeUnit timeUnit)
+        throws InterruptedException, ExecutionException, TimeoutException {
 
-      if(isDone())
+      if (isDone())
         return null;
 
       synchronized (taskQueue) {
         taskQueue.wait(timeUnit.toMillis(l));
 
-        if(!isDone())
+        if (!isDone())
           throw new TimeoutException();
       }
 
       return null;
     }
 
-    private enum JobStatus {
-      RUNNING,
-      CANCELLED,
-      FINISHED
-    }
+    private enum JobStatus { RUNNING, CANCELLED, FINISHED }
 
-    public Job(EndReceiver endReceiver) {
-      this.endReceiver = endReceiver;
-    }
+    public Job(EndReceiver endReceiver) { this.endReceiver = endReceiver; }
 
-    public void add(String url, Receiver receiver) throws MalformedURLException, IllegalStateException {
+    public void add(String url, Receiver receiver)
+        throws MalformedURLException, IllegalStateException {
       RemoteReader reader = RemoteReader.fromUrl(url);
       Task task = new Task(url, this, receiver);
 
       synchronized (taskQueue) {
-        if(status != JobStatus.RUNNING) {
-          throw new IllegalStateException("RemoteReader Job " + (status == JobStatus.CANCELLED ? "cancelled" : "finished"));
+        if (status != JobStatus.RUNNING) {
+          throw new IllegalStateException(
+              "RemoteReader Job " +
+              (status == JobStatus.CANCELLED ? "cancelled" : "finished"));
         }
         taskQueue.add(task);
       }
@@ -138,16 +137,16 @@ public class RemoteReader implements Runnable {
       boolean notifyJobEnd = false;
 
       synchronized (taskQueue) {
-        if(taskQueue.remove(t) && taskQueue.isEmpty()) {
+        if (taskQueue.remove(t) && taskQueue.isEmpty()) {
           taskQueue.notify();
-          if(status == JobStatus.RUNNING) {
+          if (status == JobStatus.RUNNING) {
             status = JobStatus.FINISHED;
             notifyJobEnd = true;
           }
         }
       }
 
-      if(notifyJobEnd)
+      if (notifyJobEnd)
         endReceiver.onEnd();
     }
   }
@@ -211,38 +210,31 @@ public class RemoteReader implements Runnable {
       this.owner = null;
     }
 
-    public String getUrl() {
-      return url;
-    }
+    public String getUrl() { return url; }
 
-    public Receiver getReceiver() {
-      return receiver;
-    }
+    public Receiver getReceiver() { return receiver; }
 
     public void onDone() {
-      if(owner != null)
+      if (owner != null)
         owner.onTaskDone(this);
     }
   }
 
   private boolean running;
   private final String host;
-  private static final LinkedList<RemoteReader> readers = new LinkedList<RemoteReader>();
-  private static final ExecutorService _readers = Executors.newCachedThreadPool();
-  private static final ExecutorService notifiers = Executors.newCachedThreadPool();
+  private static final LinkedList<RemoteReader> readers =
+      new LinkedList<RemoteReader>();
+  private static final ExecutorService _readers =
+      Executors.newCachedThreadPool();
+  private static final ExecutorService notifiers =
+      Executors.newCachedThreadPool();
   private final Queue<Task> tasks = new LinkedList<Task>();
 
-  static {
-    HttpURLConnection.setFollowRedirects(true);
-  }
+  static { HttpURLConnection.setFollowRedirects(true); }
 
-  private RemoteReader(String host) {
-    this.host = host;
-  }
+  private RemoteReader(String host) { this.host = host; }
 
-  private String getHost() {
-    return host;
-  }
+  private String getHost() { return host; }
 
   public static RemoteReader fromHost(String host) {
     synchronized (readers) {
@@ -274,31 +266,21 @@ public class RemoteReader implements Runnable {
       public void onContentFetched(byte[] content) {
         this.content = content;
         this.done = true;
-        synchronized (this) {
-          this.notify();
-        }
+        synchronized (this) { this.notify(); }
       }
 
       @Override
       public void onError(byte[] description) {
         this.errorMessage = new String(description);
         this.done = true;
-        synchronized (this) {
-          this.notify();
-        }
+        synchronized (this) { this.notify(); }
       }
 
-      public byte[] getContent() {
-        return content;
-      }
+      public byte[] getContent() { return content; }
 
-      public boolean isDone() {
-        return done;
-      }
+      public boolean isDone() { return done; }
 
-      public String getErrorMessage() {
-        return errorMessage;
-      }
+      public String getErrorMessage() { return errorMessage; }
     }
 
     RemoteReader reader = fromUrl(url);
@@ -308,7 +290,7 @@ public class RemoteReader implements Runnable {
 
     try {
       synchronized (r) {
-        while(!r.isDone())
+        while (!r.isDone())
           r.wait();
       }
     } catch (InterruptedException e) {
@@ -317,7 +299,7 @@ public class RemoteReader implements Runnable {
 
     byte[] res = r.getContent();
 
-    if(res == null)
+    if (res == null)
       throw new IOException(r.getErrorMessage());
 
     return res;
@@ -325,7 +307,7 @@ public class RemoteReader implements Runnable {
 
   public static void terminateAll() {
     synchronized (readers) {
-      for(RemoteReader r : readers) {
+      for (RemoteReader r : readers) {
         r.terminate();
       }
     }
@@ -333,7 +315,7 @@ public class RemoteReader implements Runnable {
 
   private void addFirst(Task task) {
     synchronized (tasks) {
-      ((Deque<Task>) tasks).addFirst(task);
+      ((Deque<Task>)tasks).addFirst(task);
       tasks.notify();
     }
   }
@@ -346,9 +328,7 @@ public class RemoteReader implements Runnable {
   }
 
   public void remove(Task task) {
-    synchronized (tasks) {
-      tasks.remove(task);
-    }
+    synchronized (tasks) { tasks.remove(task); }
   }
 
   public void run() {
@@ -362,22 +342,23 @@ public class RemoteReader implements Runnable {
 
     Thread.currentThread().setName("RemoteReader[" + host + "]");
 
-    Logger.debug("RemoteReader[" + host +"] started");
+    Logger.debug("RemoteReader[" + host + "] started");
 
-    while(running) {
+    while (running) {
 
       try {
         synchronized (tasks) {
-          while(running && (task = tasks.poll()) == null) {
+          while (running && (task = tasks.poll()) == null) {
             tasks.wait();
           }
         }
       } catch (InterruptedException e) {
-        Logger.warning("RemoteReader[" + host +"] interrupted");
+        Logger.warning("RemoteReader[" + host + "] interrupted");
         break;
       }
 
-      if(task == null) break;
+      if (task == null)
+        break;
 
       isError = false;
       notifier = null;
@@ -390,17 +371,18 @@ public class RemoteReader implements Runnable {
 
         URL current = new URL(url);
 
-        for(int i=0;i<30;i++) {
+        for (int i = 0; i < 30; i++) {
           connection = current.openConnection();
           stream = connection.getInputStream();
 
-          if(!(connection instanceof HttpURLConnection))
+          if (!(connection instanceof HttpURLConnection))
             break;
 
-          HttpURLConnection httpURLConnection = (HttpURLConnection) connection;
+          HttpURLConnection httpURLConnection = (HttpURLConnection)connection;
           int code = httpURLConnection.getResponseCode();
 
-          if(code != HttpURLConnection.HTTP_MOVED_PERM && code != HttpURLConnection.HTTP_MOVED_TEMP )
+          if (code != HttpURLConnection.HTTP_MOVED_PERM &&
+              code != HttpURLConnection.HTTP_MOVED_TEMP)
             break;
 
           String location = connection.getHeaderField("Location");
@@ -408,7 +390,7 @@ public class RemoteReader implements Runnable {
         }
       } catch (IOException e) {
         if (connection != null && connection instanceof HttpURLConnection) {
-          stream = ((HttpURLConnection) connection).getErrorStream();
+          stream = ((HttpURLConnection)connection).getErrorStream();
           isError = true;
         } else {
           notifier = new Notifier(task, e.getMessage().getBytes(), true);
@@ -429,19 +411,15 @@ public class RemoteReader implements Runnable {
       notifiers.execute(notifier);
     }
 
-    Logger.debug("RemoteReader[" + host +"] quitting");
+    Logger.debug("RemoteReader[" + host + "] quitting");
 
     running = false;
 
-    synchronized (readers) {
-      readers.remove(this);
-    }
+    synchronized (readers) { readers.remove(this); }
   }
 
   public void terminate() {
     running = false;
-    synchronized (tasks) {
-      tasks.notify();
-    }
+    synchronized (tasks) { tasks.notify(); }
   }
 }

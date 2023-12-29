@@ -19,27 +19,25 @@
 package org.csploit.android.net;
 
 import android.support.annotation.NonNull;
-
 import java.io.BufferedReader;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-
 import org.csploit.android.core.System;
 import org.csploit.android.helpers.NetworkHelper;
 
-public class Endpoint implements Comparable<Endpoint>
-{
+public class Endpoint implements Comparable<Endpoint> {
   private InetAddress mAddress = null;
   private byte[] mHardware = null;
 
-  public static byte[] parseMacAddress(String macAddress){
-    if(macAddress != null && !macAddress.equals("null") && !macAddress.isEmpty()){
+  public static byte[] parseMacAddress(String macAddress) {
+    if (macAddress != null && !macAddress.equals("null") &&
+        !macAddress.isEmpty()) {
 
       String[] bytes = macAddress.split(":");
       byte[] parsed = new byte[bytes.length];
 
-      for(int x = 0; x < bytes.length; x++){
+      for (int x = 0; x < bytes.length; x++) {
         BigInteger temp = new BigInteger(bytes[x], 16);
         byte[] raw = temp.toByteArray();
         parsed[x] = raw[raw.length - 1];
@@ -49,49 +47,45 @@ public class Endpoint implements Comparable<Endpoint>
     }
 
     return null;
-
   }
 
-  public Endpoint(String address){
-    this(address, null);
-  }
+  public Endpoint(String address) { this(address, null); }
 
-  public Endpoint(InetAddress address, byte[] hardware){
+  public Endpoint(InetAddress address, byte[] hardware) {
     mAddress = address;
     mHardware = hardware;
   }
 
-  public Endpoint(String address, String hardware){
-    try{
+  public Endpoint(String address, String hardware) {
+    try {
       mAddress = InetAddress.getByName(address);
       mHardware = hardware != null ? parseMacAddress(hardware) : null;
-    }
-    catch(UnknownHostException e){
+    } catch (UnknownHostException e) {
       System.errorLogging(e);
       mAddress = null;
     }
   }
 
-  public Endpoint(BufferedReader reader) throws Exception{
+  public Endpoint(BufferedReader reader) throws Exception {
     mAddress = InetAddress.getByName(reader.readLine());
     mHardware = parseMacAddress(reader.readLine());
   }
 
-  public void serialize(StringBuilder builder){
+  public void serialize(StringBuilder builder) {
     builder.append(mAddress.getHostAddress()).append("\n");
     builder.append(getHardwareAsString()).append("\n");
   }
 
-  public boolean equals(Endpoint endpoint){
-    if(endpoint==null)
-          return false;
+  public boolean equals(Endpoint endpoint) {
+    if (endpoint == null)
+      return false;
 
-    else if(mHardware != null && endpoint.mHardware != null) {
-      if(mHardware.length != endpoint.mHardware.length)
+    else if (mHardware != null && endpoint.mHardware != null) {
+      if (mHardware.length != endpoint.mHardware.length)
         return false;
 
-      for(int i=0;i<mHardware.length;i++) {
-        if(mHardware[i] != endpoint.mHardware[i])
+      for (int i = 0; i < mHardware.length; i++) {
+        if (mHardware[i] != endpoint.mHardware[i])
           return false;
       }
 
@@ -104,8 +98,8 @@ public class Endpoint implements Comparable<Endpoint>
 
   @Override
   public int compareTo(@NonNull Endpoint another) {
-    if(mHardware != null && another.mHardware != null) {
-      if(NetworkHelper.compareByteArray(mHardware, another.mHardware) == 0) {
+    if (mHardware != null && another.mHardware != null) {
+      if (NetworkHelper.compareByteArray(mHardware, another.mHardware) == 0) {
         return 0;
       }
     }
@@ -113,36 +107,26 @@ public class Endpoint implements Comparable<Endpoint>
     return NetworkHelper.compareInetAddresses(mAddress, another.mAddress);
   }
 
-  public InetAddress getAddress(){
-    return mAddress;
-  }
+  public InetAddress getAddress() { return mAddress; }
 
-  public void setAddress(InetAddress address){
-    this.mAddress = address;
-  }
+  public void setAddress(InetAddress address) { this.mAddress = address; }
 
-  public byte[] getHardware(){
-    return mHardware;
-  }
+  public byte[] getHardware() { return mHardware; }
 
-  public String getHardwareAsString(){
-    if(mHardware == null)
+  public String getHardwareAsString() {
+    if (mHardware == null)
       return "";
 
     try {
-      return String.format("%02X:%02X:%02X:%02X:%02X:%02X",
-          mHardware[0], mHardware[1], mHardware[2],
-          mHardware[3], mHardware[4], mHardware[5]);
+      return String.format("%02X:%02X:%02X:%02X:%02X:%02X", mHardware[0],
+                           mHardware[1], mHardware[2], mHardware[3],
+                           mHardware[4], mHardware[5]);
     } catch (IndexOutOfBoundsException e) {
       return "";
     }
   }
 
-  public void setHardware(byte[] hardware){
-    this.mHardware = hardware;
-  }
+  public void setHardware(byte[] hardware) { this.mHardware = hardware; }
 
-  public String toString(){
-    return mAddress.getHostAddress();
-  }
+  public String toString() { return mAddress.getHostAddress(); }
 }

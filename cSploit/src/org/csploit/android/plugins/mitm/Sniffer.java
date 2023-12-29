@@ -38,7 +38,10 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
-
+import java.io.*;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Collections;
 import org.apache.commons.compress.utils.IOUtils;
 import org.csploit.android.ActionActivity;
 import org.csploit.android.R;
@@ -52,23 +55,15 @@ import org.csploit.android.net.Target;
 import org.csploit.android.plugins.mitm.SpoofSession.OnSessionReadyListener;
 import org.csploit.android.tools.TcpDump;
 
-import java.io.*;
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-
-public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClickListener
-{
+public class Sniffer
+    extends AppCompatActivity implements AdapterView.OnItemClickListener {
   private static final String[] SORT = {
-    "Bandwidth ↓",
-    "Bandwidth ↑",
-    "Total ↓",
-    "Total ↑",
-    "Activity ↓",
-    "Activity ↑",
+      "Bandwidth ↓", "Bandwidth ↑", "Total ↓",
+      "Total ↑",     "Activity ↓",  "Activity ↑",
   };
 
-  private static final String PCAP_FILTER = "not '(src host localhost or dst host localhost or arp)'";
+  private static final String PCAP_FILTER =
+      "not '(src host localhost or dst host localhost or arp)'";
 
   private ToggleButton mSniffToggleButton = null;
   private Spinner mSortSpinner = null;
@@ -84,14 +79,14 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
   private Child mTcpdumpProcess = null;
   private FileObserver mFileActivity = null;
 
-  public class AddressStats implements Comparable<AddressStats>{
+  public class AddressStats implements Comparable<AddressStats> {
     public String mAddress = "";
     public long mBytes = 0;
     public long mBandwidth = 0;
     public long mSampledTime = 0;
     public long mSampledBytes = 0;
 
-    public AddressStats(String address){
+    public AddressStats(String address) {
       mAddress = address;
       mBytes = 0;
       mBandwidth = 0;
@@ -100,48 +95,48 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     }
 
     @Override
-    public int compareTo(AddressStats stats){
+    public int compareTo(AddressStats stats) {
       int[] cmp;
-      double va,vb;
+      double va, vb;
 
-      switch(getSortType()){
-        default:
-        case 0:
-          cmp = new int[]{-1, 1, 0};
-          va = mBandwidth;
-          vb = stats.mBandwidth;
-          break;
-        case 1:
-          cmp = new int[]{1, -1, 0};
-          va = mBandwidth;
-          vb = stats.mBandwidth;
-          break;
-        case 2:
-          cmp = new int[]{-1, 1, 0};
-          va = mBytes;
-          vb = stats.mBytes;
-          break;
-        case 3:
-          cmp = new int[]{1, -1, 0};
-          va = mBytes;
-          vb = stats.mBytes;
-          break;
-        case 4:
-          cmp = new int[]{-1, 1, 0};
-          va = mSampledTime;
-          vb = stats.mSampledTime;
-          break;
-        case 5:
-          cmp = new int[]{1, -1, 0};
-          va = mSampledTime;
-          vb = stats.mSampledTime;
-          break;
+      switch (getSortType()) {
+      default:
+      case 0:
+        cmp = new int[] {-1, 1, 0};
+        va = mBandwidth;
+        vb = stats.mBandwidth;
+        break;
+      case 1:
+        cmp = new int[] {1, -1, 0};
+        va = mBandwidth;
+        vb = stats.mBandwidth;
+        break;
+      case 2:
+        cmp = new int[] {-1, 1, 0};
+        va = mBytes;
+        vb = stats.mBytes;
+        break;
+      case 3:
+        cmp = new int[] {1, -1, 0};
+        va = mBytes;
+        vb = stats.mBytes;
+        break;
+      case 4:
+        cmp = new int[] {-1, 1, 0};
+        va = mSampledTime;
+        vb = stats.mSampledTime;
+        break;
+      case 5:
+        cmp = new int[] {1, -1, 0};
+        va = mSampledTime;
+        vb = stats.mSampledTime;
+        break;
       }
 
-      if(va > vb)
+      if (va > vb)
         return cmp[0];
 
-      else if(va < vb)
+      else if (va < vb)
         return cmp[1];
 
       else
@@ -201,40 +196,36 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     }
 
     private synchronized AddressStats getByPosition(int position) {
-      synchronized (mStats) {
-        return mStats.get(position);
-      }
+      synchronized (mStats) { return mStats.get(position); }
     }
 
     @Override
-    public int getCount(){
-      synchronized (mStats) {
-        return mStats.size();
-      }
+    public int getCount() {
+      synchronized (mStats) { return mStats.size(); }
     }
 
-    private String formatSize(long size){
-      if(size < 1024)
+    private String formatSize(long size) {
+      if (size < 1024)
         return size + " B";
 
-      else if(size < (1024 * 1024))
+      else if (size < (1024 * 1024))
         return (size / 1024) + " KB";
 
-      else if(size < (1024 * 1024 * 1024))
+      else if (size < (1024 * 1024 * 1024))
         return (size / (1024 * 1024)) + " MB";
 
       else
         return (size / (1024 * 1024 * 1024)) + " GB";
     }
 
-    private String formatSpeed(long speed){
-      if(speed < 1024)
+    private String formatSpeed(long speed) {
+      if (speed < 1024)
         return speed + " B/s";
 
-      else if(speed < (1024 * 1024))
+      else if (speed < (1024 * 1024))
         return (speed / 1024) + " KB/s";
 
-      else if(speed < (1024 * 1024 * 1024))
+      else if (speed < (1024 * 1024 * 1024))
         return (speed / (1024 * 1024)) + " MB/s";
 
       else
@@ -242,54 +233,47 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent){
+    public View getView(int position, View convertView, ViewGroup parent) {
       View row = convertView;
       StatsHolder holder = null;
 
-      if(row == null){
-        LayoutInflater inflater = (LayoutInflater) Sniffer.this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+      if (row == null) {
+        LayoutInflater inflater = (LayoutInflater)Sniffer.this.getSystemService(
+            Context.LAYOUT_INFLATER_SERVICE);
         row = inflater.inflate(mLayoutId, parent, false);
 
         holder = new StatsHolder();
 
-        holder.address = (TextView) row.findViewById(R.id.statAddress);
-        holder.description = (TextView) row.findViewById(R.id.statDescription);
+        holder.address = (TextView)row.findViewById(R.id.statAddress);
+        holder.description = (TextView)row.findViewById(R.id.statDescription);
 
         row.setTag(holder);
-      } else{
-        holder = (StatsHolder) row.getTag();
+      } else {
+        holder = (StatsHolder)row.getTag();
       }
 
       AddressStats stats = getByPosition(position);
       Target target = System.getTargetByAddress(stats.mAddress);
 
-      if(target != null && target.hasAlias())
-        holder.address.setText
-          (
-            Html.fromHtml
-              (
-                "<b>" + target.getAlias() + "</b> <small>( " + target.getDisplayAddress() + " )</small>"
-              )
-          );
+      if (target != null && target.hasAlias())
+        holder.address.setText(
+            Html.fromHtml("<b>" + target.getAlias() + "</b> <small>( " +
+                          target.getDisplayAddress() + " )</small>"));
       else
         holder.address.setText(stats.mAddress);
 
-      holder.description.setText
-        (
-          Html.fromHtml
-            (
-              "<b>BANDWIDTH</b>: " + formatSpeed(stats.mBandwidth) + " | <b>TOTAL</b> " + formatSize(stats.mBytes)
-            )
-        );
+      holder.description.setText(
+          Html.fromHtml("<b>BANDWIDTH</b>: " + formatSpeed(stats.mBandwidth) +
+                        " | <b>TOTAL</b> " + formatSize(stats.mBytes)));
 
       return row;
     }
   }
 
-  public void onCreate(Bundle savedInstanceState){
+  public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     SharedPreferences themePrefs = getSharedPreferences("THEME", 0);
-  	Boolean isDark = themePrefs.getBoolean("isDark", false);
+    Boolean isDark = themePrefs.getBoolean("isDark", false);
 
     if (isDark)
       setTheme(R.style.DarkTheme);
@@ -300,104 +284,118 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     setContentView(R.layout.plugin_mitm_sniffer);
     getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-    mSniffToggleButton = (ToggleButton) findViewById(R.id.sniffToggleButton);
-    mSniffProgress = (ProgressBar) findViewById(R.id.sniffActivity);
-    mSortSpinner = (Spinner) findViewById(R.id.sortSpinner);
-    mListView = (ListView) findViewById(R.id.listView);
+    mSniffToggleButton = (ToggleButton)findViewById(R.id.sniffToggleButton);
+    mSniffProgress = (ProgressBar)findViewById(R.id.sniffActivity);
+    mSortSpinner = (Spinner)findViewById(R.id.sortSpinner);
+    mListView = (ListView)findViewById(R.id.listView);
     mAdapter = new StatListAdapter(R.layout.plugin_mitm_sniffer_list_item);
-    mSampleTime = (int)(Double.parseDouble(System.getSettings().getString("PREF_SNIFFER_SAMPLE_TIME", "1.0")) * 1000);
+    mSampleTime = (int)(Double.parseDouble(System.getSettings().getString(
+                            "PREF_SNIFFER_SAMPLE_TIME", "1.0")) *
+                        1000);
     mSpoofSession = new SpoofSession(false, false, null, null);
 
-    mSortSpinner.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, SORT));
+    mSortSpinner.setAdapter(new ArrayAdapter<String>(
+        this, android.R.layout.simple_spinner_item, SORT));
     mSortSpinner.setOnItemSelectedListener(new OnItemSelectedListener() {
-      public void onItemSelected(AdapterView<?> adapter, View view, int position, long id) {
+      public void onItemSelected(AdapterView<?> adapter, View view,
+                                 int position, long id) {
         mSortType = position;
       }
 
-      public void onNothingSelected(AdapterView<?> arg0) {
-      }
+      public void onNothingSelected(AdapterView<?> arg0) {}
     });
 
     mListView.setAdapter(mAdapter);
 
     mListView.setOnItemClickListener(this);
 
-    mSniffToggleButton.setOnClickListener(new View.OnClickListener(){
+    mSniffToggleButton.setOnClickListener(new View.OnClickListener() {
       @Override
-      public void onClick(View v){
-        if(mRunning){
+      public void onClick(View v) {
+        if (mRunning) {
           setStoppedState();
-        } else{
+        } else {
           setStartedState();
         }
       }
-    }
-    );
+    });
 
-    new ConfirmDialog( getString(R.string.file_output), getString(R.string.question_save_to_pcap), this, new ConfirmDialog.ConfirmDialogListener(){
-      @Override
-      public void onConfirm(){
-        mDumpToFile = true;
-        mPcapFileName = (new File(Sniffer.this.getCacheDir(), "csploit-sniff-" + java.lang.System.currentTimeMillis() + ".pcap")).getAbsolutePath();
-      }
+    new ConfirmDialog(
+        getString(R.string.file_output),
+        getString(R.string.question_save_to_pcap), this,
+        new ConfirmDialog.ConfirmDialogListener() {
+          @Override
+          public void onConfirm() {
+            mDumpToFile = true;
+            mPcapFileName =
+                (new File(Sniffer.this.getCacheDir(),
+                          "csploit-sniff-" +
+                              java.lang.System.currentTimeMillis() + ".pcap"))
+                    .getAbsolutePath();
+          }
 
-      @Override
-      public void onCancel(){
-        mDumpToFile = false;
-        mPcapFileName = null;
-      }
-    }).show();
+          @Override
+          public void onCancel() {
+            mDumpToFile = false;
+            mPcapFileName = null;
+          }
+        })
+        .show();
   }
 
   @Override
-  public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+  public void onItemClick(AdapterView<?> parent, View view, int position,
+                          long id) {
     String address = mAdapter.getByPosition(position).mAddress;
     final Target t = System.getTargetByAddress(address);
 
     if (t == null)
       return;
 
-    new ConfirmDialog(getString(R.string.mitm_ss_select_target_title),
-            String.format(getString(R.string.mitm_ss_select_target_prompt), address),
-            Sniffer.this, new ConfirmDialog.ConfirmDialogListener() {
-      @Override
-      public void onConfirm() {
-        System.setCurrentTarget(t);
+    new ConfirmDialog(
+        getString(R.string.mitm_ss_select_target_title),
+        String.format(getString(R.string.mitm_ss_select_target_prompt),
+                      address),
+        Sniffer.this,
+        new ConfirmDialog.ConfirmDialogListener() {
+          @Override
+          public void onConfirm() {
+            System.setCurrentTarget(t);
 
-        setStoppedState();
+            setStoppedState();
 
-        Toast.makeText(Sniffer.this,
-                getString(R.string.selected_) + System.getCurrentTarget(),
-                Toast.LENGTH_SHORT).show();
+            Toast
+                .makeText(Sniffer.this,
+                          getString(R.string.selected_) +
+                              System.getCurrentTarget(),
+                          Toast.LENGTH_SHORT)
+                .show();
 
-        startActivity(new Intent(Sniffer.this,
-                ActionActivity.class));
+            startActivity(new Intent(Sniffer.this, ActionActivity.class));
 
-        overridePendingTransition(R.anim.slide_in_left,
-                R.anim.slide_out_left);
-      }
+            overridePendingTransition(R.anim.slide_in_left,
+                                      R.anim.slide_out_left);
+          }
 
-      @Override
-      public void onCancel() {
-      }
-    }).show();
+          @Override
+          public void onCancel() {}
+        })
+        .show();
   }
 
-  public synchronized int getSortType(){
-    return mSortType;
-  }
+  public synchronized int getSortType() { return mSortType; }
 
   @Override
-  public boolean onOptionsItemSelected(MenuItem item){
-    switch(item.getItemId()){
-      case android.R.id.home:
+  public boolean onOptionsItemSelected(MenuItem item) {
+    switch (item.getItemId()) {
+    case android.R.id.home:
 
-        onBackPressed();
+      onBackPressed();
 
-        return true;
+      return true;
 
-      default:
-        return super.onOptionsItemSelected(item);
+    default:
+      return super.onOptionsItemSelected(item);
     }
   }
 
@@ -408,7 +406,8 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
 
     try {
       in = new FileInputStream(inputFile);
-      out = new FileOutputStream(new File(System.getStoragePath(),new File(mPcapFileName).getName()));
+      out = new FileOutputStream(
+          new File(System.getStoragePath(), new File(mPcapFileName).getName()));
       IOUtils.copy(in, out);
     } catch (IOException e) {
       System.errorLogging(e);
@@ -419,13 +418,13 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     }
   }
 
-  private void setStoppedState(){
-    if(mTcpdumpProcess != null) {
+  private void setStoppedState() {
+    if (mTcpdumpProcess != null) {
       mTcpdumpProcess.kill();
       mTcpdumpProcess = null;
     }
 
-    if(mDumpToFile) {
+    if (mDumpToFile) {
       if (mFileActivity != null) {
         mFileActivity.stopWatching();
         mFileActivity = null;
@@ -446,7 +445,7 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     });
   }
 
-  private void addNewTarget (final AddressStats stats){
+  private void addNewTarget(final AddressStats stats) {
     Sniffer.this.runOnUiThread(new Runnable() {
       @Override
       public void run() {
@@ -456,7 +455,7 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     });
   }
 
-  private void updateStats (final AddressStats stats, final long len){
+  private void updateStats(final AddressStats stats, final long len) {
     Sniffer.this.runOnUiThread(new Runnable() {
       @Override
       public void run() {
@@ -475,7 +474,7 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     });
   }
 
-  private void showMessage (final String text){
+  private void showMessage(final String text) {
     Sniffer.this.runOnUiThread(new Runnable() {
       @Override
       public void run() {
@@ -484,10 +483,10 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     });
   }
 
-  private void setSpoofErrorState(final String error){
-    Sniffer.this.runOnUiThread(new Runnable(){
+  private void setSpoofErrorState(final String error) {
+    Sniffer.this.runOnUiThread(new Runnable() {
       @Override
-      public void run(){
+      public void run() {
         new ErrorDialog("Error", error, Sniffer.this).show();
         setStoppedState();
       }
@@ -495,37 +494,43 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
   }
 
   /**
-   * Monitor a pcap file for changes, in order to let the user know that the capture is running.
+   * Monitor a pcap file for changes, in order to let the user know that the
+   * capture is running.
    */
-  private void startMonitoringPcapFile(){
-    final String str_address = (System.getCurrentTarget().getType() == Target.Type.NETWORK) ? System.getCurrentTarget().getDisplayAddress().split("/")[0] : System.getCurrentTarget().getDisplayAddress();
+  private void startMonitoringPcapFile() {
+    final String str_address =
+        (System.getCurrentTarget().getType() == Target.Type.NETWORK)
+            ? System.getCurrentTarget().getDisplayAddress().split("/")[0]
+            : System.getCurrentTarget().getDisplayAddress();
 
     final File pcapfile = new File(mPcapFileName);
-    try{
+    try {
       pcapfile.createNewFile();
-    }catch(IOException io)
-    {
-      Toast.makeText(this, "File not created: " + io.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+    } catch (IOException io) {
+      Toast
+          .makeText(this, "File not created: " + io.getLocalizedMessage(),
+                    Toast.LENGTH_LONG)
+          .show();
       return;
     }
 
     mFileActivity = new FileObserver(mPcapFileName) {
       @Override
       public void onEvent(int event, String s) {
-        switch (event){
-          case FileObserver.CLOSE_WRITE:
-            showMessage(getString(R.string.saved) + ":\n" + mPcapFileName);
-            break;
-          case FileObserver.MODIFY:
+        switch (event) {
+        case FileObserver.CLOSE_WRITE:
+          showMessage(getString(R.string.saved) + ":\n" + mPcapFileName);
+          break;
+        case FileObserver.MODIFY:
 
-            AddressStats stats = mAdapter.getStats(str_address);
-            updateStats(stats, pcapfile.length());
-            break;
-          case FileObserver.OPEN:
-            showMessage(getString(R.string.dumping_traffic_to) + mPcapFileName);
-            break;
-          default:
-            break;
+          AddressStats stats = mAdapter.getStats(str_address);
+          updateStats(stats, pcapfile.length());
+          break;
+        case FileObserver.OPEN:
+          showMessage(getString(R.string.dumping_traffic_to) + mPcapFileName);
+          break;
+        default:
+          break;
         }
       }
     };
@@ -533,32 +538,32 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
     stats.mBytes = 0;
     stats.mSampledTime = java.lang.System.currentTimeMillis();
     addNewTarget(stats);
-    // android docs: The monitored file or directory must exist at this time,or else no events will be reported
+    // android docs: The monitored file or directory must exist at this time,or
+    // else no events will be reported
     mFileActivity.startWatching();
   }
 
-  private void setStartedState(){
+  private void setStartedState() {
     if (mRunning)
       setStoppedState();
 
-    if(mDumpToFile) {
+    if (mDumpToFile) {
       mSampleTime = 100;
       startMonitoringPcapFile();
-    }
-    else
+    } else
       mSampleTime = 1000;
 
     try {
-      mSpoofSession.start(new OnSessionReadyListener(){
+      mSpoofSession.start(new OnSessionReadyListener() {
         @Override
-        public void onError(String error, int resId){
+        public void onError(String error, int resId) {
           error = error == null ? getString(resId) : error;
           setSpoofErrorState(error);
         }
 
         @Override
-        public void onSessionReady(){
-          if(mTcpdumpProcess!=null) {
+        public void onSessionReady() {
+          if (mTcpdumpProcess != null) {
             mTcpdumpProcess.kill();
           }
 
@@ -566,41 +571,46 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
             mRunning = true;
             mSniffProgress.setVisibility(View.VISIBLE);
 
-            mTcpdumpProcess = System.getTools().tcpDump.sniff(PCAP_FILTER, mPcapFileName, new TcpDump.TcpDumpReceiver() {
+            mTcpdumpProcess = System.getTools().tcpDump.sniff(
+                PCAP_FILTER, mPcapFileName, new TcpDump.TcpDumpReceiver() {
+                  @Override
+                  public void onPacket(InetAddress src, InetAddress dst,
+                                       int len) {
+                    long now = java.lang.System.currentTimeMillis();
+                    AddressStats stats = null;
+                    String stringAddress = null;
 
-              @Override
-              public void onPacket(InetAddress src, InetAddress dst, int len) {
-              long now = java.lang.System.currentTimeMillis();
-              AddressStats stats = null;
-              String stringAddress = null;
+                    if (System.getNetwork().isInternal(src)) {
+                      stringAddress = src.getHostAddress();
+                      stats = mAdapter.getStats(stringAddress);
+                    } else if (System.getNetwork().isInternal(dst)) {
+                      stringAddress = dst.getHostAddress();
+                      stats = mAdapter.getStats(stringAddress);
+                    }
 
-              if (System.getNetwork().isInternal(src)) {
-                stringAddress = src.getHostAddress();
-                stats = mAdapter.getStats(stringAddress);
-              } else if (System.getNetwork().isInternal(dst)) {
-                stringAddress = dst.getHostAddress();
-                stats = mAdapter.getStats(stringAddress);
-              }
+                    if (stats == null) {
+                      if (stringAddress == null)
+                        return;
+                      stats = new AddressStats(stringAddress);
+                      stats.mBytes = len;
+                      stats.mSampledTime = now;
+                    } else {
+                      updateStats(stats, len);
+                    }
 
-              if (stats == null) {
-                if(stringAddress==null)
-                  return;
-                stats = new AddressStats(stringAddress);
-                stats.mBytes = len;
-                stats.mSampledTime = now;
-              } else {
-                updateStats(stats, len);
-              }
-
-              final AddressStats fstats = stats;
-              addNewTarget(fstats);
-              }
-            });
-          } catch( ChildManager.ChildNotStartedException e ) {
-            Sniffer.this.runOnUiThread( new Runnable() {
+                    final AddressStats fstats = stats;
+                    addNewTarget(fstats);
+                  }
+                });
+          } catch (ChildManager.ChildNotStartedException e) {
+            Sniffer.this.runOnUiThread(new Runnable() {
               @Override
               public void run() {
-                Toast.makeText(Sniffer.this, getString(R.string.child_not_started), Toast.LENGTH_LONG).show();
+                Toast
+                    .makeText(Sniffer.this,
+                              getString(R.string.child_not_started),
+                              Toast.LENGTH_LONG)
+                    .show();
                 setStoppedState();
               }
             });
@@ -613,7 +623,7 @@ public class Sniffer extends AppCompatActivity implements AdapterView.OnItemClic
   }
 
   @Override
-  public void onBackPressed(){
+  public void onBackPressed() {
     setStoppedState();
     super.onBackPressed();
     overridePendingTransition(R.anim.fadeout, R.anim.fadein);
