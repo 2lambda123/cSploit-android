@@ -211,6 +211,10 @@ class Rapid7
     public void onContentFetched(byte[] content) {
 
       MsfExploit result = parsePage(new String(content));
+
+      if(result == null)
+        return;
+
       result.copyTo(exploit);
 
       receiver.onFoundItemChanged(exploit);
@@ -308,9 +312,11 @@ class Rapid7
     private void parseExploit(String html) {
       MsfExploit exploit = ExploitReceiver.parsePage(html);
 
-      exploit.setPort(port);
+      if(exploit != null) {
+        exploit.setPort(port);
 
-      receiver.onItemFound(exploit);
+        receiver.onItemFound(exploit);
+      }
     }
 
     @Override
@@ -338,7 +344,7 @@ class Rapid7
   public void beginSearch(RemoteReader.Job job, String query, Target.Port port, Search.Receiver<Target.Exploit> receiver) {
     String url;
 
-    url = "http://www.rapid7.com/db/search?q=";
+    url = "https://www.rapid7.com/db/search?q=";
 
     try {
       url += URLEncoder.encode(query, "UTF-8");
